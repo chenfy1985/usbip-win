@@ -13,11 +13,14 @@
 
 ### Build Tools
 - Visual Studio 2017 Community
-- Windows SDK 10.0.17134
-- Windows Driver Kit 10.0.17134
+- Windows SDK 10.0.17763(Windows 10, version 1809)
+- Windows Driver Kit 10.0.17763(Windows 10, version 1809)
+- Compatible with following old Windows SDK & Driver Kit
+  - 10.0.17134(Windows 10, version 1803)
 
 ### Build Process
 - Open usbip_win.sln
+- Set Windows SDK version for 3 userspace projects(usbip, usbip_common, usbipd) if your SDK version is not 10.0.17763.
 - Set certificate driver signing for usbip\_stub and usbip\_vhci projects.
   - Right-click on the project > Properties > Driver Signing > Test Certificate
   - Browse to driver/usbip\_test.pfx
