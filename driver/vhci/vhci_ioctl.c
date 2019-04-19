@@ -72,8 +72,8 @@ process_irp_urb_req(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
 	DBGI(DBG_IOCTL, "process_irp_urb_req: function: %s\n", dbg_urbfunc(urb->UrbHeader.Function));
 
 	switch (urb->UrbHeader.Function) {
-	case URB_FUNCTION_RESET_PIPE:
-		return process_urb_reset_pipe(vpdo);
+	case URB_FUNCTION_SYNC_RESET_PIPE_AND_CLEAR_STALL:
+		return submit_urbr_irp(vpdo, irp);
 	case URB_FUNCTION_ABORT_PIPE:
 		return process_urb_abort_pipe(vpdo, urb);
 	case URB_FUNCTION_GET_CURRENT_FRAME_NUMBER:

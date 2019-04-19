@@ -168,12 +168,15 @@ get_usb_desc(usbip_stub_dev_t *devstub, UCHAR descType, UCHAR idx, USHORT idLang
 }
 
 PUSB_CONFIGURATION_DESCRIPTOR
-get_usb_dsc_conf(usbip_stub_dev_t *devstub, UCHAR idx)
+get_usb_dsc_conf(usbip_stub_dev_t *devstub, UCHAR configurationValue)
 {
 	PUSB_CONFIGURATION_DESCRIPTOR	dsc_conf;
 	URB		Urb;
 	USB_CONFIGURATION_DESCRIPTOR	ConfDesc;
 	NTSTATUS	status;
+	
+	//https://community.osr.com/discussion/274851
+	UCHAR idx = configurationValue - 1;
 
 	UsbBuildGetDescriptorRequest(&Urb, sizeof(struct _URB_CONTROL_DESCRIPTOR_REQUEST),
 		USB_CONFIGURATION_DESCRIPTOR_TYPE, idx, 0, &ConfDesc, NULL,
@@ -277,6 +280,13 @@ select_usb_intf(usbip_stub_dev_t *devstub, UCHAR intf_num, USHORT alt_setting)
 		return FALSE;
 	}
 
+	PUSB_INTERFACE_DESCRIPTOR	dsc_intf = dsc_find_intf(devstub->devconf->dsc_conf, intf_num, alt_setting);
+	if (!dsc_intf)
+	{
+		DBGW(DBG_GENERAL, "select_usb_intf: empty dsc_intf: num: %hhu, alt:%hu\n", intf_num, alt_setting);
+		return FALSE;
+	}
+
 	info_intf_size = get_info_intf_size(devstub->devconf, intf_num, alt_setting);
 	if (info_intf_size == 0) {
 		DBGW(DBG_GENERAL, "select_usb_intf: non-existent interface: num: %hhu, alt:%hu\n", intf_num, alt_setting);
@@ -291,6 +301,12 @@ select_usb_intf(usbip_stub_dev_t *devstub, UCHAR intf_num, USHORT alt_setting)
 	}
 	UsbBuildSelectInterfaceRequest(purb, (USHORT)len_urb, devstub->devconf->hConf, intf_num, (UCHAR)alt_setting);
 	purb_seli = &purb->UrbSelectInterface;
+	memset(&purb_seli->Interface.Pipes, 0, sizeof(USBD_PIPE_INFORMATION)*dsc_intf->bNumEndpoints);
+
+	purb_seli->Interface.Class = dsc_intf->bInterfaceClass;
+	purb_seli->Interface.SubClass = dsc_intf->bInterfaceSubClass;
+	purb_seli->Interface.Protocol = dsc_intf->bInterfaceProtocol;
+	purb_seli->Interface.NumberOfPipes = dsc_intf->bNumEndpoints;
 
 	status = call_usbd(devstub, purb);
 	ExFreePoolWithTag(purb, USBIP_STUB_POOL_TAG);
@@ -358,6 +374,8 @@ done_bulk_intr_transfer(usbip_stub_dev_t *devstub, NTSTATUS status, PURB purb, s
 			sres->header.u.ret_submit.actual_length = sres->data_len;
 		}
 		else {
+			sres->data_len = 0;
+			sres->header.u.ret_submit.actual_length = sres->data_len;
 			sres->header.u.ret_submit.status = to_usbip_status(purb->UrbHeader.Status);
 		}
 		reply_stub_req(devstub, sres);
